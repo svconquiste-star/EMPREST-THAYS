@@ -1,49 +1,40 @@
 import { NextResponse } from 'next/server';
 import { createContact } from '@/lib/api/contactService';
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     const body = await request.json();
 
-    // Extrair IP e User-Agent
-    const ipAddress = request.headers.get('x-forwarded-for') ||
+    const forwarded = request.headers.get('x-forwarded-for');
+    const ipAddress = (forwarded ? forwarded.split(',')[0].trim() : null) ||
+                      request.headers.get('x-real-ip') ||
                       request.headers.get('x-client-ip') ||
                       'unknown';
     const userAgent = request.headers.get('user-agent');
 
-    // Criar contato no DB
     const contact = await createContact(body, ipAddress, userAgent);
 
-    // Resposta sucesso
-    return NextResponse.json({
-      success: true,
-      contactId: contact.id,
-    }, { status: 201 });
-
+    return NextResponse.json({ success: true, contactId: contact.id }, { status: 201 });
   } catch (error) {
-    // Validation errors
-    if (error.name === 'ZodError') {
+    const issues = error?.issues || error?.errors;
+    if (error.name === 'ZodError' && issues) {
       return NextResponse.json(
         {
           error: 'Dados inválidos',
-          details: error.errors.map(e => ({
-            field: e.path.join('.'),
-            message: e.message,
-          })),
+          details: issues.map((e) => ({ field: e.path.join('.'), message: e.message })),
         },
         { status: 400 }
       );
     }
 
-    // Generic errors
     console.error('[API /save-contact] Error:', error);
-    return NextResponse.json(
-      { error: 'Erro ao salvar dados' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erro ao salvar dados' }, { status: 500 });
   }
 }
 
-export async function OPTIONS(request) {
+export async function OPTIONS() {
   return new NextResponse(null, { status: 200 });
 }

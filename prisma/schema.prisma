@@ -20,12 +20,12 @@ model Contact {
 
   whatsappLink    String?   @db.Text
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
   ipAddress       String?   @db.VarChar(45)
   userAgent       String?   @db.Text
 
-  @@map("contact_kayq_goias")
+  @@map("Contact_THAYS")
   @@index([telefone])
   @@index([email])
   @@index([createdAt])

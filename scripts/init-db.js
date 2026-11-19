@@ -1,44 +1,38 @@
+// Cria a tabela "Contact_THAYS" no schema Dados_Cliente_Emprest (idempotente).
+// Uso: node --env-file=.env.local scripts/init-db.js
 const { PrismaClient } = require('@prisma/client');
-
 const prisma = new PrismaClient();
+const T = '"Dados_Cliente_Emprest"."Contact_THAYS"';
 
-async function createContactTable() {
-  try {
-    console.log('Creating Contact table...');
+async function main() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS ${T} (
+      "id"              TEXT PRIMARY KEY,
+      "nomeEmpresa"     VARCHAR(255) NOT NULL,
+      "nome"            VARCHAR(255) NOT NULL,
+      "telefone"        VARCHAR(20)  NOT NULL,
+      "email"           VARCHAR(255),
+      "cidade"          VARCHAR(255) NOT NULL,
+      "deviceType"      VARCHAR(50),
+      "operatingSystem" VARCHAR(50),
+      "whatsappLink"    TEXT,
+      "createdAt"       TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt"       TIMESTAMPTZ(3) NOT NULL,
+      "ipAddress"       VARCHAR(45),
+      "userAgent"       TEXT
+    )`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_THAYS_telefone_idx"  ON ${T}("telefone")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_THAYS_email_idx"     ON ${T}("email")`);
+  await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_THAYS_createdAt_idx" ON ${T}("createdAt")`);
 
-    // Create table using raw SQL
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "Contact" (
-        "id" TEXT NOT NULL PRIMARY KEY,
-        "nomeEmpresa" VARCHAR(255) NOT NULL,
-        "nome" VARCHAR(255) NOT NULL,
-        "telefone" VARCHAR(20) NOT NULL,
-        "email" VARCHAR(255),
-        "cidade" VARCHAR(255) NOT NULL,
-        "deviceType" VARCHAR(50),
-        "operatingSystem" VARCHAR(50),
-        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        "ipAddress" VARCHAR(45),
-        "userAgent" TEXT
-      );
-    `);
-
-    console.log('✓ Contact table created successfully');
-
-    // Create indexes
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_telefone_idx" ON "Contact"("telefone");`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_email_idx" ON "Contact"("email");`);
-    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "Contact_createdAt_idx" ON "Contact"("createdAt");`);
-
-    console.log('✓ Indexes created successfully');
-
-  } catch (error) {
-    console.error('Error creating table:', error);
-    process.exit(1);
-  } finally {
-    await prisma.$disconnect();
-  }
+  const cols = await prisma.$queryRawUnsafe(`
+    SELECT column_name, data_type FROM information_schema.columns
+    WHERE table_schema = 'Dados_Cliente_Emprest' AND table_name = 'Contact_THAYS'
+    ORDER BY ordinal_position`);
+  console.log('✓ Tabela Contact_THAYS pronta:');
+  cols.forEach((c) => console.log(`  - ${c.column_name} (${c.data_type})`));
 }
 
-createContactTable();
+main()
+  .catch((e) => { console.error('❌', e.message); process.exit(1); })
+  .finally(() => prisma.$disconnect());
